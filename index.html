@@ -73,43 +73,43 @@
         }).catch(err => alert("LIFF 初始化失敗"));
 
         async function loadMenu(store) {
-            document.getElementById('storeTitle').innerText = store;
-            try {
-                const res = await fetch(`${backendBase}/get_menu?store=${encodeURIComponent(store)}`);
-                const data = await res.json();
-                menuData = data.menu;
+			document.getElementById('storeTitle').innerText = store;
+			try {
+				// 1. 抓取資料，記得加上 ngrok 跳過警告的標頭
+				const res = await fetch(`${backendBase}/get_menu?store=${encodeURIComponent(store)}`, {
+					headers: { "ngrok-skip-browser-warning": "true" }
+				});
+				const data = await res.json();
+				
+				// 2. 核心修正：從 data.menu 抓取列表 (對應你截圖中的 "menu" 鑰匙)
+				menuData = data.menu; 
 
-                if (data.img) {
-                    const img = document.getElementById('menuImg');
-                    img.src = data.img;
-                    img.style.display = 'block';
-                }
-                document.getElementById('webLink').href = data.url;
+				const itemSelect = document.getElementById('itemSelect');
+				itemSelect.innerHTML = ""; // 先清空
 
-                const itemSelect = document.getElementById('itemSelect');
-                let categories = {};
-                menuData.forEach(item => {
-                    if (!categories[item.category]) categories[item.category] = [];
-                    categories[item.category].push(item);
-                });
+				// 3. 渲染選單
+				menuData.forEach(i => {
+					let opt = document.createElement('option');
+					opt.value = i.name;
+					opt.innerText = `${i.name} ($${i.price})`;
+					itemSelect.appendChild(opt);
+				});
 
-                for (let cat in categories) {
-                    let group = document.createElement('optgroup');
-                    group.label = cat;
-                    categories[cat].forEach(i => {
-                        let opt = document.createElement('option');
-                        opt.value = i.name;
-                        opt.innerText = `${i.name} ($${i.price})`;
-                        group.appendChild(opt);
-                    });
-                    itemSelect.appendChild(group);
-                }
-                updateOptions();
-                document.getElementById('status').innerText = "✅ 菜單已同步";
-            } catch (e) {
-                document.getElementById('status').innerText = "❌ 菜單載入失敗";
-            }
-        }
+				// 4. 更新圖片與官網連結 (對應你截圖中的 "img" 與 "url" 鑰匙)
+				if (data.img && data.img.startsWith('http')) {
+					const img = document.getElementById('menuImg');
+					img.src = data.img;
+					img.style.display = 'block';
+				}
+				document.getElementById('webLink').href = data.url || "#";
+
+				updateOptions();
+				document.getElementById('status').innerText = "✅ 菜單同步成功";
+			} catch (e) {
+				console.error(e);
+				document.getElementById('status').innerText = "❌ 菜單解析失敗，請確認後端格式";
+			}
+		}
 
         function updateOptions() {
             const selected = menuData.find(i => i.name === document.getElementById('itemSelect').value);
@@ -133,5 +133,3 @@
     </script>
 </body>
 </html>
-
-
