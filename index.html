@@ -69,7 +69,7 @@
 
     <script>
         // 初始化 LIFF，填入你的 LIFF ID
-        liff.init({ liffId: "你的_LIFF_ID" }).then(() => {
+        liff.init({ liffId: "2008930067-ncNoJlEK" }).then(() => {
             if (!liff.isLoggedIn()) { liff.login(); }
             const urlParams = new URLSearchParams(window.location.search);
             const store = urlParams.get('store');
@@ -79,4 +79,5 @@
         function sendOrder() {
             const store = document.getElementById('storeName').innerText;
             const item = document.getElementById('item').value;
+
             const size = document.querySelector('input[name
