@@ -72,7 +72,7 @@
             if (store) loadMenu(store);
         }).catch(err => alert("LIFF 初始化失敗"));
 
-        async function loadMenu(store) {
+		async function loadMenu(store) {
 			const statusEl = document.getElementById('status');
 			document.getElementById('storeTitle').innerText = store;
 			
@@ -83,19 +83,19 @@
 				});
 				
 				const data = await res.json();
-				console.log("接收到的原始資料:", data); // 偵錯用
+				console.log("接收到的原始資料:", data);
 
-				// 2. 核心對齊：確認 data 裡面有 menu 這個鑰匙
-				if (!data.menu || data.menu.length === 0) {
-					statusEl.innerText = "❌ 找不到此店家的飲料品項";
+				// 2. 關鍵修正：對應截圖中的 "menu" 鑰匙
+				if (!data.menu || !Array.isArray(data.menu)) {
+					statusEl.innerText = "❌ 格式錯誤：找不到 menu 列表";
 					return;
 				}
 
-				menuData = data.menu; // 把陣列存起來
+				menuData = data.menu; 
 
-				// 3. 渲染選單
+				// 3. 渲染選單 (清空後重建)
 				const itemSelect = document.getElementById('itemSelect');
-				itemSelect.innerHTML = ""; // 先清空舊的
+				itemSelect.innerHTML = ""; 
 				
 				menuData.forEach(i => {
 					let opt = document.createElement('option');
@@ -104,18 +104,14 @@
 					itemSelect.appendChild(opt);
 				});
 
-				// 4. 更新圖片與官網連結 (如果有資料的話)
+				// 4. 更新圖片與官網連結 (對應截圖中的 "img" 與 "url")
 				const imgEl = document.getElementById('menuImg');
 				if (data.img && data.img.startsWith('http')) {
 					imgEl.src = data.img;
 					imgEl.style.display = 'block';
-				} else {
-					imgEl.style.display = 'none';
 				}
-				
 				document.getElementById('webLink').href = data.url || "#";
 
-				// 5. 初始化第一個品項的冰塊/甜度
 				updateOptions();
 				statusEl.innerText = "✅ 菜單同步成功";
 				
