@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>揪團點餐系統</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        :root { --line-green: #06C755; --bg-gray: #f4f4f7; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-gray); margin: 0; padding: 20px; color: #333; }
+        .card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        h2 { margin-top: 0; color: var(--line-green); font-size: 1.5rem; text-align: center; }
+        .section { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 0.9rem; color: #666; }
+        select, input[type="text"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; appearance: none; background-color: #fff; }
+        .radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .radio-group label { flex: 1; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid #ddd; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: normal; transition: 0.2s; }
+        .radio-group input { display: none; }
+        .radio-group input:checked + span { color: var(--line-green); font-weight: bold; }
+        .radio-group label:has(input:checked) { border-color: var(--line-green); background: #f0fff4; }
+        button { width: 100%; padding: 16px; background-color: var(--line-green); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 8px rgba(6, 199, 85, 0.3); }
+        button:active { transform: scale(0.98); }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2 id="storeName">正在載入菜單...</h2>
+        
+        <div class="section">
+            <label>選擇品項</label>
+            <select id="item">
+                <option value="珍珠奶茶">珍珠奶茶</option>
+                <option value="四季春茶">四季春茶</option>
+                <option value="燕麥奶茶">燕麥奶茶</option>
+                <option value="經典拿鐵">經典拿鐵</option>
+            </select>
+        </div>
+
+        <div class="section">
+            <label>容量</label>
+            <div class="radio-group">
+                <label><input type="radio" name="size" value="大" checked> <span>大杯</span></label>
+                <label><input type="radio" name="size" value="中"> <span>中杯</span></label>
+            </div>
+        </div>
+
+        <div class="section">
+            <label>冰塊甜度</label>
+            <div style="display: flex; gap: 10px;">
+                <select id="ice">
+                    <option>去冰</option><option>微冰</option><option>少冰</option><option>正常冰</option>
+                </select>
+                <select id="sugar">
+                    <option>無糖</option><option>微糖</option><option>半糖</option><option>少糖</option><option>正常糖</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section">
+            <label>這杯給誰？</label>
+            <div class="radio-group">
+                <label><input type="radio" name="type" value="自己點" checked> <span>我自己</span></label>
+                <label><input type="radio" name="type" value="代點"> <span>幫人點</span></label>
+            </div>
+        </div>
+
+        <button onclick="sendOrder()">確認點餐</button>
+    </div>
+
+    <script>
+        // 初始化 LIFF，填入你的 LIFF ID
+        liff.init({ liffId: "你的_LIFF_ID" }).then(() => {
+            if (!liff.isLoggedIn()) { liff.login(); }
+            const urlParams = new URLSearchParams(window.location.search);
+            const store = urlParams.get('store');
+            if (store) document.getElementById('storeName').innerText = store;
+        });
+
+        function sendOrder() {
+            const store = document.getElementById('storeName').innerText;
+            const item = document.getElementById('item').value;
+            const size = document.querySelector('input[name
