@@ -73,21 +73,30 @@
         }).catch(err => alert("LIFF 初始化失敗"));
 
         async function loadMenu(store) {
+			const statusEl = document.getElementById('status');
 			document.getElementById('storeTitle').innerText = store;
+			
 			try {
-				// 1. 抓取資料，記得加上 ngrok 跳過警告的標頭
+				// 1. 抓取資料 (加入跳過 ngrok 警告的 Header)
 				const res = await fetch(`${backendBase}/get_menu?store=${encodeURIComponent(store)}`, {
 					headers: { "ngrok-skip-browser-warning": "true" }
 				});
-				const data = await res.json();
 				
-				// 2. 核心修正：從 data.menu 抓取列表 (對應你截圖中的 "menu" 鑰匙)
-				menuData = data.menu; 
+				const data = await res.json();
+				console.log("接收到的原始資料:", data); // 偵錯用
 
-				const itemSelect = document.getElementById('itemSelect');
-				itemSelect.innerHTML = ""; // 先清空
+				// 2. 核心對齊：確認 data 裡面有 menu 這個鑰匙
+				if (!data.menu || data.menu.length === 0) {
+					statusEl.innerText = "❌ 找不到此店家的飲料品項";
+					return;
+				}
+
+				menuData = data.menu; // 把陣列存起來
 
 				// 3. 渲染選單
+				const itemSelect = document.getElementById('itemSelect');
+				itemSelect.innerHTML = ""; // 先清空舊的
+				
 				menuData.forEach(i => {
 					let opt = document.createElement('option');
 					opt.value = i.name;
@@ -95,19 +104,24 @@
 					itemSelect.appendChild(opt);
 				});
 
-				// 4. 更新圖片與官網連結 (對應你截圖中的 "img" 與 "url" 鑰匙)
+				// 4. 更新圖片與官網連結 (如果有資料的話)
+				const imgEl = document.getElementById('menuImg');
 				if (data.img && data.img.startsWith('http')) {
-					const img = document.getElementById('menuImg');
-					img.src = data.img;
-					img.style.display = 'block';
+					imgEl.src = data.img;
+					imgEl.style.display = 'block';
+				} else {
+					imgEl.style.display = 'none';
 				}
+				
 				document.getElementById('webLink').href = data.url || "#";
 
+				// 5. 初始化第一個品項的冰塊/甜度
 				updateOptions();
-				document.getElementById('status').innerText = "✅ 菜單同步成功";
+				statusEl.innerText = "✅ 菜單同步成功";
+				
 			} catch (e) {
-				console.error(e);
-				document.getElementById('status').innerText = "❌ 菜單解析失敗，請確認後端格式";
+				console.error("解析出錯:", e);
+				statusEl.innerText = "❌ 菜單解析失敗，請確認後端格式";
 			}
 		}
 
