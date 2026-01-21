@@ -129,16 +129,57 @@
             document.getElementById('toppingSelect').innerHTML = '<option value="無">無</option>' + toppings.map(v => `<option value="${v}">${v}</option>`).join('');
         }
 
-        function submitOrder() {
-            const store = document.getElementById('storeTitle').innerText;
-            const item = document.getElementById('itemSelect').value;
-            const ice = document.getElementById('iceSelect').value;
-            const sugar = document.getElementById('sugarSelect').value;
-            const topping = document.getElementById('toppingSelect').value;
-            const note = document.getElementById('noteInput').value.trim() || "無";
-            const msg = `#點餐 ${store}/${item}/${selectedSize}/${ice}/${sugar}/${topping}/${selectedType}/${note}`;
-            liff.sendMessages([{ type: 'text', text: msg }]).then(() => liff.closeWindow());
-        }
+        <!-- function submitOrder() { -->
+            <!-- const store = document.getElementById('storeTitle').innerText; -->
+            <!-- const item = document.getElementById('itemSelect').value; -->
+            <!-- const ice = document.getElementById('iceSelect').value; -->
+            <!-- const sugar = document.getElementById('sugarSelect').value; -->
+            <!-- const topping = document.getElementById('toppingSelect').value; -->
+            <!-- const note = document.getElementById('noteInput').value.trim() || "無"; -->
+            <!-- const msg = `#點餐 ${store}/${item}/${selectedSize}/${ice}/${sugar}/${topping}/${selectedType}/${note}`; -->
+            <!-- liff.sendMessages([{ type: 'text', text: msg }]).then(() => liff.closeWindow()); -->
+        <!-- } -->
+		async function submitOrder() {
+			const store = document.getElementById('storeTitle').innerText;
+			const item = document.getElementById('itemSelect').value;
+			const ice = document.getElementById('iceSelect').value;
+			const sugar = document.getElementById('sugarSelect').value;
+			const topping = document.getElementById('toppingSelect').value;
+			const note = document.getElementById('noteInput').value.trim() || "無";
+			
+			// 取得 LINE 使用者資訊
+			const profile = await liff.getProfile();
+			const userId = profile.userId;
+			const userName = profile.displayName;
+			
+			// 取得當前 Context (為了拿到 groupId 或 roomId)
+			const context = liff.getContext();
+			const targetId = context.groupId || context.roomId || userId;
+
+			document.getElementById('status').innerText = "⏳ 訂單傳送中...";
+
+			try {
+				// 直接呼叫後端 API
+				const response = await fetch(`${backendBase}/submit_order_direct`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						store, item, size: selectedSize, ice, sugar, 
+						topping, type: selectedType, note,
+						userId, userName, targetId
+					})
+				});
+
+				if (response.ok) {
+					liff.closeWindow(); // 成功後關閉視窗
+				} else {
+					alert("點餐失敗，請稍後再試");
+				}
+			} catch (e) {
+				console.error(e);
+				alert("連線錯誤");
+			}
+		}
     </script>
 </body>
 </html>
