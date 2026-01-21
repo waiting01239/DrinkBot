@@ -6,124 +6,94 @@
     <title>林茵燎點餐助手</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        :root { --line-green: #06C755; --bg-gray: #f4f4f7; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg-gray); margin: 0; padding: 20px; }
-        .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
-        .menu-img { width: 100%; border-radius: 8px; margin-bottom: 10px; display: none; border: 1px solid #eee; }
-        .link-btn { display: block; text-align: center; color: #666; font-size: 0.85rem; margin-bottom: 20px; text-decoration: none; border: 1px solid #ddd; padding: 8px; border-radius: 20px; }
-        h2 { color: var(--line-green); text-align: center; margin: 0 0 15px 0; }
-        .section { margin-bottom: 18px; }
-        label { display: block; font-weight: bold; margin-bottom: 6px; font-size: 0.9rem; color: #444; }
-        select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; background: #fff; appearance: none; }
-        optgroup { font-style: normal; font-weight: bold; color: var(--line-green); }
-        button { width: 100%; padding: 16px; background: var(--line-green); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        button:active { background: #05a847; }
-        #status { text-align: center; font-size: 0.75rem; color: #bbb; margin-top: 15px; }
+        :root { --line-green: #06C755; }
+        body { font-family: sans-serif; background: #f4f4f7; padding: 20px; }
+        .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
+        h2 { color: var(--line-green); text-align: center; margin-top: 0; }
+        .section { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 0.9rem; }
+        select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; }
+        .segmented-control { display: flex; gap: 10px; }
+        .segment-item { flex: 1; text-align: center; padding: 12px; border: 2px solid #eee; border-radius: 12px; cursor: pointer; transition: 0.2s; background: #fafafa; }
+        .segment-item.active { border-color: var(--line-green); background: #e6ffef; color: var(--line-green); font-weight: bold; }
+        button { width: 100%; padding: 16px; background: var(--line-green); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; margin-top: 10px; }
+        #status { text-align: center; font-size: 0.7rem; color: #999; margin-top: 15px; }
     </style>
 </head>
 <body>
     <div class="card">
         <h2 id="storeTitle">讀取中...</h2>
-        <img id="menuImg" class="menu-img" src="" alt="菜單圖片">
-        <a id="webLink" class="link-btn" href="#" target="_blank">🔗 前往官網菜單網頁</a>
-
         <div class="section">
             <label>1. 選擇品項</label>
             <select id="itemSelect" onchange="updateOptions()"></select>
         </div>
-
+        <div class="section">
+            <label>2. 尺寸</label>
+            <div class="segmented-control" id="sizeGroup"></div>
+        </div>
         <div class="section" style="display: flex; gap: 10px;">
-            <div style="flex: 1;">
-                <label>2. 冰塊</label>
-                <select id="iceSelect"></select>
-            </div>
-            <div style="flex: 1;">
-                <label>3. 甜度</label>
-                <select id="sugarSelect"></select>
-            </div>
+            <div style="flex:1"><label>3. 冰塊</label><select id="iceSelect"></select></div>
+            <div style="flex:1"><label>4. 甜度</label><select id="sugarSelect"></select></div>
         </div>
-
+        <div class="section"><label>5. 加料</label><select id="toppingSelect"></select></div>
         <div class="section">
-            <label>4. 加料 (選填)</label>
-            <select id="toppingSelect"></select>
+            <label>6. 誰要喝？</label>
+            <div class="segmented-control" id="typeGroup">
+                <div class="segment-item active" onclick="selectType(this, '自己點')">我自己喝</div>
+                <div class="segment-item" onclick="selectType(this, '代點')">幫別人點</div>
+            </div>
         </div>
-
-        <div class="section">
-            <label>5. 誰要喝？</label>
-            <select id="typeSelect">
-                <option value="自己點">我自己喝</option>
-                <option value="代點">幫別人點</option>
-            </select>
-        </div>
-
-        <button onclick="submitOrder()">確認點餐並送出</button>
-        <div id="status">正在從雲端同步菜單...</div>
+        <button onclick="submitOrder()">送出訂單</button>
+        <div id="status">同步中...</div>
     </div>
 
     <script>
-        let menuData = [];
-        const liffId = "2008930067-ncNoJlEK";
-        const backendBase = "https://deana-postexilian-trena.ngrok-free.dev"; // 務必更換為你的 ngrok 網址
+        let menuData = [], selectedSize = "", selectedType = "自己點";
+        const liffId = "2008930067-ncNoJlEK", backendBase = "你的NGROK網址";
 
         liff.init({ liffId }).then(() => {
-            if (!liff.isLoggedIn()) liff.login();
-            const urlParams = new URLSearchParams(window.location.search);
-            const store = urlParams.get('store');
+            const store = new URLSearchParams(window.location.search).get('store');
             if (store) loadMenu(store);
-        }).catch(err => alert("LIFF 初始化失敗"));
+        });
 
-		async function loadMenu(store) {
-			const statusEl = document.getElementById('status');
-			const itemSelect = document.getElementById('itemSelect');
-			document.getElementById('storeTitle').innerText = store;
-			
-			try {
-				const res = await fetch(`${backendBase}/get_menu?store=${encodeURIComponent(store)}`, {
-					headers: { "ngrok-skip-browser-warning": "true" }
-				});
-				const data = await res.json();
-				menuData = data.menu; 
+        async function loadMenu(store) {
+            document.getElementById('storeTitle').innerText = store;
+            try {
+                const res = await fetch(`${backendBase}/get_menu?store=${encodeURIComponent(store)}`, { headers: {"ngrok-skip-browser-warning":"true"} });
+                const data = await res.json();
+                menuData = data.menu;
+                const categories = {};
+                menuData.forEach(i => { if(!categories[i.category]) categories[i.category]=[]; categories[i.category].push(i); });
+                const itemSelect = document.getElementById('itemSelect');
+                for (let cat in categories) {
+                    let group = document.createElement('optgroup'); group.label = cat;
+                    categories[cat].forEach(i => { let opt = document.createElement('option'); opt.value = i.name; opt.innerText = i.name; group.appendChild(opt); });
+                    itemSelect.appendChild(group);
+                }
+                updateOptions();
+                document.getElementById('status').innerText = "✅ 菜單同步成功";
+            } catch (e) { document.getElementById('status').innerText = "❌ 載入失敗"; }
+        }
 
-				// 1. 清空舊的選項
-				itemSelect.innerHTML = ""; 
+        function selectSize(el, val) {
+            document.querySelectorAll('#sizeGroup .segment-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active'); selectedSize = val;
+        }
 
-				// 2. 進行分類邏輯 (將品項按 category 進行分組)
-				const categories = {};
-				menuData.forEach(item => {
-					if (!categories[item.category]) {
-						categories[item.category] = [];
-					}
-					categories[item.category].push(item);
-				});
-
-				// 3. 渲染分類選單
-				for (let catName in categories) {
-					// 建立分類標籤區塊
-					let optGroup = document.createElement('optgroup');
-					optGroup.label = catName;
-
-					// 將該分類下的飲料塞入區塊
-					categories[catName].forEach(i => {
-						let opt = document.createElement('option');
-						opt.value = i.name;
-						opt.innerText = `${i.name} ($${i.price})`;
-						optGroup.appendChild(opt);
-					});
-
-					// 將整組分類加進下拉選單
-					itemSelect.appendChild(optGroup);
-				}
-
-				updateOptions();
-				statusEl.innerText = "✅ 菜單同步成功";
-			} catch (e) {
-				console.error("解析出錯:", e);
-				statusEl.innerText = "❌ 菜單解析失敗";
-			}
-		}
+        function selectType(el, val) {
+            document.querySelectorAll('#typeGroup .segment-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active'); selectedType = val;
+        }
 
         function updateOptions() {
             const selected = menuData.find(i => i.name === document.getElementById('itemSelect').value);
+            const sizeGroup = document.getElementById('sizeGroup');
+            const pricePairs = selected.price.split(',');
+            sizeGroup.innerHTML = pricePairs.map((p, idx) => {
+                const [label, price] = p.includes(':') ? p.split(':') : ['大', p];
+                if(idx === 0) selectedSize = label;
+                return `<div class="segment-item ${idx===0?'active':''}" onclick="selectSize(this, '${label}')">${label}<br><small>$${price}</small></div>`;
+            }).join('');
             document.getElementById('iceSelect').innerHTML = selected.ice.split(',').map(v => `<option value="${v}">${v}</option>`).join('');
             document.getElementById('sugarSelect').innerHTML = selected.sugar.split(',').map(v => `<option value="${v}">${v}</option>`).join('');
             document.getElementById('toppingSelect').innerHTML = '<option value="">無</option>' + 
@@ -136,9 +106,7 @@
             const ice = document.getElementById('iceSelect').value;
             const sugar = document.getElementById('sugarSelect').value;
             const topping = document.getElementById('toppingSelect').value;
-            const type = document.getElementById('typeSelect').value;
-
-            const msg = `#點餐 ${store}/${item}/${ice}/${sugar}/${topping}/${type}`;
+            const msg = `#點餐 ${store}/${item}/${selectedSize}/${ice}/${sugar}/${topping}/${selectedType}`;
             liff.sendMessages([{ type: 'text', text: msg }]).then(() => liff.closeWindow());
         }
     </script>
