@@ -55,7 +55,7 @@
     <script>
         let menuData = [], selectedSize = "", selectedType = "自己點";
         const liffId = "2008930067-ncNoJlEK";
-        const backendBase = "https://deana-postexilian-trena.ngrok-free.dev"; 
+        const backendBase = "https://deana-postexilian-trena.ngrok-free.dev"; // 記得替換
 
         liff.init({ liffId }).then(() => {
             const store = new URLSearchParams(window.location.search).get('store');
@@ -108,7 +108,7 @@
 
             const sizeGroup = document.getElementById('sizeGroup');
             let pricePairs = (selected.price || "0").toString().split(',').filter(p => p.trim() !== "");
-            if (pricePairs.length > 1) pricePairs.reverse();
+            if (pricePairs.length > 1) pricePairs.reverse(); // 對調讓大杯在左
             sizeGroup.innerHTML = pricePairs.map((p, idx) => {
                 const [label, price] = p.includes(':') ? p.split(':') : ['大', p];
                 if(idx === 0) selectedSize = label;
@@ -130,11 +130,18 @@
             const note = document.getElementById('noteInput').value.trim() || "無";
             
             document.getElementById('status').innerText = "⏳ 傳送中...";
+            
             try {
                 const profile = await liff.getProfile();
                 const context = liff.getContext();
-                // 優先使用群組 ID，沒有則使用個人 ID
-                const targetId = context.groupId || context.roomId || context.userId || profile.userId;
+                
+                // --- 核心 ID 修正邏輯 ---
+                // 優先使用 GroupID，若為 UUID 或空值，則強制回退到 UserID
+                let targetId = context.groupId || context.roomId || context.userId || profile.userId;
+
+                if (!targetId || targetId.includes('-')) {
+                    targetId = profile.userId; 
+                }
 
                 await fetch(`${backendBase}/submit_order_direct`, {
                     method: 'POST',
@@ -146,9 +153,12 @@
                         targetId: targetId
                     })
                 });
+                
+                // 成功後關閉視窗
                 liff.closeWindow();
             } catch (e) {
-                alert("點餐失敗，請確認網路連線");
+                console.error(e);
+                alert("點餐失敗，請確認是否已授權個人檔案權限");
             }
         }
     </script>
