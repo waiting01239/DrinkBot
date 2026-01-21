@@ -122,42 +122,52 @@
         }
 
         async function submitOrder() {
-            const store = document.getElementById('storeTitle').innerText;
-            const item = document.getElementById('itemSelect').value;
-            const ice = document.getElementById('iceSelect').value;
-            const sugar = document.getElementById('sugarSelect').value;
-            const topping = document.getElementById('toppingSelect').value;
-            const note = document.getElementById('noteInput').value.trim() || "無";
-            
-            document.getElementById('status').innerText = "⏳ 傳送中...";
-            
-            try {
-				const profile = await liff.getProfile(); // 這步會強制觸發授權
+			const store = document.getElementById('storeTitle').innerText;
+			const item = document.getElementById('itemSelect').value;
+			const ice = document.getElementById('iceSelect').value;
+			const sugar = document.getElementById('sugarSelect').value;
+			const topping = document.getElementById('toppingSelect').value;
+			const note = document.getElementById('noteInput').value.trim() || "無";
+			
+			document.getElementById('status').innerText = "⏳ 傳送中...";
+			
+			try {
+				const profile = await liff.getProfile();
 				const context = liff.getContext();
 				
-				// 優先順序：群組ID > 聊天室ID > 個人ID
+				// 修正 ID 獲取邏輯
 				let targetId = context.groupId || context.roomId || profile.userId;
-
-				// 如果還是抓到帶橫線的 UUID，就強制用個人的真實 ID
 				if (!targetId || targetId.includes('-')) {
 					targetId = profile.userId; 
 				}
 
-				console.log("最終傳送 ID:", targetId);
-
-				await fetch(`${backendBase}/submit_order_direct`, {
+				const response = await fetch(`${backendBase}/submit_order_direct`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
-						// ... 其他資料 ...
+						store: store,      // 務必對齊後端的 data.get('store')
+						item: item,
+						size: selectedSize,
+						ice: ice,
+						sugar: sugar, 
+						topping: topping,
+						type: selectedType,
+						note: note,
+						userName: profile.displayName,
 						targetId: targetId
 					})
 				});
-				liff.closeWindow();
+
+				if (response.ok) {
+					liff.closeWindow();
+				} else {
+					alert("點餐失敗，請回報管理員檢查後端 Log");
+				}
 			} catch (e) {
-				alert("請先同意授權才能點餐喔！");
+				console.error(e);
+				alert("點餐失敗，請重新開啟頁面");
 			}
-        }
+		}
     </script>
 </body>
 </html>
