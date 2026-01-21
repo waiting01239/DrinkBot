@@ -74,50 +74,51 @@
 
 		async function loadMenu(store) {
 			const statusEl = document.getElementById('status');
+			const itemSelect = document.getElementById('itemSelect');
 			document.getElementById('storeTitle').innerText = store;
 			
 			try {
-				// 1. 抓取資料 (加入跳過 ngrok 警告的 Header)
 				const res = await fetch(`${backendBase}/get_menu?store=${encodeURIComponent(store)}`, {
 					headers: { "ngrok-skip-browser-warning": "true" }
 				});
-				
 				const data = await res.json();
-				console.log("接收到的原始資料:", data);
-
-				// 2. 關鍵修正：對應截圖中的 "menu" 鑰匙
-				if (!data.menu || !Array.isArray(data.menu)) {
-					statusEl.innerText = "❌ 格式錯誤：找不到 menu 列表";
-					return;
-				}
-
 				menuData = data.menu; 
 
-				// 3. 渲染選單 (清空後重建)
-				const itemSelect = document.getElementById('itemSelect');
+				// 1. 清空舊的選項
 				itemSelect.innerHTML = ""; 
-				
-				menuData.forEach(i => {
-					let opt = document.createElement('option');
-					opt.value = i.name;
-					opt.innerText = `${i.name} ($${i.price})`;
-					itemSelect.appendChild(opt);
+
+				// 2. 進行分類邏輯 (將品項按 category 進行分組)
+				const categories = {};
+				menuData.forEach(item => {
+					if (!categories[item.category]) {
+						categories[item.category] = [];
+					}
+					categories[item.category].push(item);
 				});
 
-				// 4. 更新圖片與官網連結 (對應截圖中的 "img" 與 "url")
-				const imgEl = document.getElementById('menuImg');
-				if (data.img && data.img.startsWith('http')) {
-					imgEl.src = data.img;
-					imgEl.style.display = 'block';
+				// 3. 渲染分類選單
+				for (let catName in categories) {
+					// 建立分類標籤區塊
+					let optGroup = document.createElement('optgroup');
+					optGroup.label = catName;
+
+					// 將該分類下的飲料塞入區塊
+					categories[catName].forEach(i => {
+						let opt = document.createElement('option');
+						opt.value = i.name;
+						opt.innerText = `${i.name} ($${i.price})`;
+						optGroup.appendChild(opt);
+					});
+
+					// 將整組分類加進下拉選單
+					itemSelect.appendChild(optGroup);
 				}
-				document.getElementById('webLink').href = data.url || "#";
 
 				updateOptions();
 				statusEl.innerText = "✅ 菜單同步成功";
-				
 			} catch (e) {
 				console.error("解析出錯:", e);
-				statusEl.innerText = "❌ 菜單解析失敗，請確認後端格式";
+				statusEl.innerText = "❌ 菜單解析失敗";
 			}
 		}
 
