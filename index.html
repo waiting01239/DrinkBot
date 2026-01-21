@@ -105,7 +105,7 @@
             // --- 關鍵修正：若選擇自定義品項，給予預設尺寸清單 ---
             if (itemVal === "自定義品項") {
                 selected = {
-                    price: "大:0,中:0",
+                    price: "中:0,大:0",
                     ice: "正常冰,少冰,微冰,去冰,完全去冰,溫,熱",
                     sugar: "無糖,1分糖,3分糖,半糖,7分糖,9分糖,全糖",
                     toppings: ""
@@ -116,9 +116,6 @@
 
             const sizeGroup = document.getElementById('sizeGroup');
             let pricePairs = (selected.price || "0").toString().split(',').filter(p => p.trim() !== "");
-            
-            // 對調順序讓「大」優先顯示在左邊
-            //if (pricePairs.length > 1) pricePairs.reverse();
 
             sizeGroup.innerHTML = pricePairs.map((p, idx) => {
                 const [label, price] = p.includes(':') ? p.split(':') : ['大', p];
