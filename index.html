@@ -7,16 +7,16 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         :root { --line-green: #06C755; }
-        body { font-family: sans-serif; background: #f4f4f7; padding: 20px; }
-        .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
+        body { font-family: sans-serif; background: #f4f4f7; padding: 20px; margin: 0; }
+        .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px; margin: 20px auto; }
         h2 { color: var(--line-green); text-align: center; margin-top: 0; }
         .section { margin-bottom: 20px; }
         label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 0.9rem; }
-        select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; }
+        select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; background: white; }
         .segmented-control { display: flex; gap: 10px; }
-        .segment-item { flex: 1; text-align: center; padding: 12px; border: 2px solid #eee; border-radius: 12px; cursor: pointer; transition: 0.2s; background: #fafafa; }
+        .segment-item { flex: 1; text-align: center; padding: 12px; border: 2px solid #eee; border-radius: 12px; cursor: pointer; transition: 0.2s; background: #fafafa; font-size: 0.9rem; }
         .segment-item.active { border-color: var(--line-green); background: #e6ffef; color: var(--line-green); font-weight: bold; }
-        button { width: 100%; padding: 16px; background: var(--line-green); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; margin-top: 10px; }
+        button { width: 100%; padding: 16px; background: var(--line-green); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; margin-top: 10px; cursor: pointer; }
         #status { text-align: center; font-size: 0.7rem; color: #999; margin-top: 15px; }
     </style>
 </head>
@@ -49,7 +49,8 @@
 
     <script>
         let menuData = [], selectedSize = "", selectedType = "自己點";
-        const liffId = "2008930067-ncNoJlEK", backendBase = "你的NGROK網址";
+        const liffId = "2008930067-ncNoJlEK";
+        const backendBase = "https://deana-postexilian-trena.ngrok-free.dev/"; // 結尾不要加 /
 
         liff.init({ liffId }).then(() => {
             const store = new URLSearchParams(window.location.search).get('store');
@@ -59,20 +60,42 @@
         async function loadMenu(store) {
             document.getElementById('storeTitle').innerText = store;
             try {
-                const res = await fetch(`${backendBase}/get_menu?store=${encodeURIComponent(store)}`, { headers: {"ngrok-skip-browser-warning":"true"} });
+                const res = await fetch(`${backendBase}/get_menu?store=${encodeURIComponent(store)}`, { 
+                    headers: {"ngrok-skip-browser-warning":"true"} 
+                });
                 const data = await res.json();
                 menuData = data.menu;
+
+                if (!menuData || menuData.length === 0) {
+                    document.getElementById('status').innerText = "❌ 找不到店家菜單";
+                    return;
+                }
+
                 const categories = {};
-                menuData.forEach(i => { if(!categories[i.category]) categories[i.category]=[]; categories[i.category].push(i); });
+                menuData.forEach(i => { 
+                    const cat = i.category || "其他";
+                    if(!categories[cat]) categories[cat]=[]; 
+                    categories[cat].push(i); 
+                });
+
                 const itemSelect = document.getElementById('itemSelect');
+                itemSelect.innerHTML = "";
                 for (let cat in categories) {
                     let group = document.createElement('optgroup'); group.label = cat;
-                    categories[cat].forEach(i => { let opt = document.createElement('option'); opt.value = i.name; opt.innerText = i.name; group.appendChild(opt); });
+                    categories[cat].forEach(i => { 
+                        let opt = document.createElement('option'); 
+                        opt.value = i.name; 
+                        opt.innerText = i.name; 
+                        group.appendChild(opt); 
+                    });
                     itemSelect.appendChild(group);
                 }
                 updateOptions();
                 document.getElementById('status').innerText = "✅ 菜單同步成功";
-            } catch (e) { document.getElementById('status').innerText = "❌ 載入失敗"; }
+            } catch (e) { 
+                console.error(e);
+                document.getElementById('status').innerText = "❌ 載入失敗，請檢查連線"; 
+            }
         }
 
         function selectSize(el, val) {
@@ -86,18 +109,27 @@
         }
 
         function updateOptions() {
-            const selected = menuData.find(i => i.name === document.getElementById('itemSelect').value);
+            const itemVal = document.getElementById('itemSelect').value;
+            const selected = menuData.find(i => i.name === itemVal);
+            if (!selected) return;
+
+            // 尺寸解析
             const sizeGroup = document.getElementById('sizeGroup');
-            const pricePairs = selected.price.split(',');
+            const priceStr = String(selected.price || "0");
+            const pricePairs = priceStr.split(',');
             sizeGroup.innerHTML = pricePairs.map((p, idx) => {
                 const [label, price] = p.includes(':') ? p.split(':') : ['大', p];
                 if(idx === 0) selectedSize = label;
                 return `<div class="segment-item ${idx===0?'active':''}" onclick="selectSize(this, '${label}')">${label}<br><small>$${price}</small></div>`;
             }).join('');
-            document.getElementById('iceSelect').innerHTML = selected.ice.split(',').map(v => `<option value="${v}">${v}</option>`).join('');
-            document.getElementById('sugarSelect').innerHTML = selected.sugar.split(',').map(v => `<option value="${v}">${v}</option>`).join('');
+
+            // 冰塊、甜度、加料解析 (防空白)
+            document.getElementById('iceSelect').innerHTML = (selected.ice || "正常").split(',').map(v => `<option value="${v}">${v}</option>`).join('');
+            document.getElementById('sugarSelect').innerHTML = (selected.sugar || "正常").split(',').map(v => `<option value="${v}">${v}</option>`).join('');
+            
+            const toppingList = (selected.toppings || "").split(',').filter(v => v.trim() !== "");
             document.getElementById('toppingSelect').innerHTML = '<option value="">無</option>' + 
-                selected.toppings.split(',').map(v => `<option value="${v}">${v}</option>`).join('');
+                toppingList.map(v => `<option value="${v}">${v}</option>`).join('');
         }
 
         function submitOrder() {
@@ -106,8 +138,9 @@
             const ice = document.getElementById('iceSelect').value;
             const sugar = document.getElementById('sugarSelect').value;
             const topping = document.getElementById('toppingSelect').value;
+            // 格式：店家/品項/尺寸/冰/糖/加料/類型
             const msg = `#點餐 ${store}/${item}/${selectedSize}/${ice}/${sugar}/${topping}/${selectedType}`;
-            liff.sendMessages([{ type: 'text', text: msg }]).then(() => liff.closeWindow());
+            liff.sendMessages([{ type: 'text', text: msg }]).then(() => liff.closeWindow()).catch(err => alert("傳送失敗: " + err));
         }
     </script>
 </body>
