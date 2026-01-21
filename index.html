@@ -19,8 +19,6 @@
         .segment-item.active { border-color: var(--line-green); background: #e6ffef; color: var(--line-green); font-weight: bold; }
         button { width: 100%; padding: 16px; background: var(--line-green); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; margin-top: 10px; cursor: pointer; }
         #status { text-align: center; font-size: 0.7rem; color: #999; margin-top: 12px; }
-        /* 用於隱藏尺寸區塊 */
-        .hidden { display: none; }
     </style>
 </head>
 <body>
@@ -30,7 +28,7 @@
             <label>1. 選擇品項</label>
             <select id="itemSelect" onchange="updateOptions()"></select>
         </div>
-        <div class="section" id="sizeSection">
+        <div class="section">
             <label>2. 尺寸</label>
             <div class="segmented-control" id="sizeGroup"></div>
         </div>
@@ -41,7 +39,7 @@
         <div class="section"><label>5. 加料</label><select id="toppingSelect"></select></div>
         <div class="section">
             <label>6. 備註 / 自定義品項</label>
-            <textarea id="noteInput" placeholder="● 加特殊料&#10;● 自定義品項：請在此輸入名稱&#10;● 上方選項請照常點選"></textarea>
+            <textarea id="noteInput" placeholder="● 加特殊料&#10;● 自定義品項：請在此輸入名稱&#10;● 下方選項請照常點選"></textarea>
         </div>
         <div class="section">
             <label>7. 誰要喝？</label>
@@ -55,9 +53,9 @@
     </div>
 
     <script>
-        let menuData = [], selectedSize = "大", selectedType = "自己點";
+        let menuData = [], selectedSize = "", selectedType = "自己點";
         const liffId = "2008930067-ncNoJlEK";
-        const backendBase = "https://deana-postexilian-trena.ngrok-free.dev/"; 
+        const backendBase = "https://deana-postexilian-trena.ngrok-free.dev"; // <--- 記得填寫你的後端網址
 
         liff.init({ liffId }).then(() => {
             const store = new URLSearchParams(window.location.search).get('store');
@@ -102,31 +100,36 @@
 
         function updateOptions() {
             const itemVal = document.getElementById('itemSelect').value;
-            const sizeSection = document.getElementById('sizeSection');
-            
-            // 如果選到自定義品項
-            if (itemVal === "自定義品項") {
-                sizeSection.classList.add('hidden');
-                selectedSize = "大"; // 預設為大
-            } else {
-                sizeSection.classList.remove('hidden');
-                const selected = menuData.find(i => i.name === itemVal) || { price: "0", ice: "正常", sugar: "正常", toppings: "" };
-                const sizeGroup = document.getElementById('sizeGroup');
-                let pricePairs = (selected.price || "0").toString().split(',').filter(p => p.trim() !== "");
-                
-                if (pricePairs.length > 1) pricePairs.reverse();
-                
-                sizeGroup.innerHTML = pricePairs.map((p, idx) => {
-                    const [label, price] = p.includes(':') ? p.split(':') : ['大', p];
-                    if(idx === 0) selectedSize = label;
-                    return `<div class="segment-item ${idx===0?'active':''}" onclick="selectSize(this, '${label}')">${label}<br><small>$${price}</small></div>`;
-                }).join('');
+            let selected = menuData.find(i => i.name === itemVal);
 
-                document.getElementById('iceSelect').innerHTML = (selected.ice || "正常").split(',').map(v => `<option value="${v}">${v}</option>`).join('');
-                document.getElementById('sugarSelect').innerHTML = (selected.sugar || "正常").split(',').map(v => `<option value="${v}">${v}</option>`).join('');
-                const toppings = (selected.toppings || "").split(',').filter(v => v.trim() !== "");
-                document.getElementById('toppingSelect').innerHTML = '<option value="無">無</option>' + toppings.map(v => `<option value="${v}">${v}</option>`).join('');
+            // --- 關鍵修正：若選擇自定義品項，給予預設尺寸清單 ---
+            if (itemVal === "自定義品項") {
+                selected = {
+                    price: "中:0,大:0", // 給予中大杯選項，預設 $0
+                    ice: "正常,少冰,微冰,去冰,熱",
+                    sugar: "正常,半糖,微糖,無糖",
+                    toppings: ""
+                };
             }
+            
+            if (!selected) return;
+
+            const sizeGroup = document.getElementById('sizeGroup');
+            let pricePairs = (selected.price || "0").toString().split(',').filter(p => p.trim() !== "");
+            
+            // 對調順序讓「大」優先顯示在左邊
+            if (pricePairs.length > 1) pricePairs.reverse();
+
+            sizeGroup.innerHTML = pricePairs.map((p, idx) => {
+                const [label, price] = p.includes(':') ? p.split(':') : ['大', p];
+                if(idx === 0) selectedSize = label;
+                return `<div class="segment-item ${idx===0?'active':''}" onclick="selectSize(this, '${label}')">${label}<br><small>$${price}</small></div>`;
+            }).join('');
+
+            document.getElementById('iceSelect').innerHTML = (selected.ice || "正常").split(',').map(v => `<option value="${v}">${v}</option>`).join('');
+            document.getElementById('sugarSelect').innerHTML = (selected.sugar || "正常").split(',').map(v => `<option value="${v}">${v}</option>`).join('');
+            const toppings = (selected.toppings || "").split(',').filter(v => v.trim() !== "");
+            document.getElementById('toppingSelect').innerHTML = '<option value="無">無</option>' + toppings.map(v => `<option value="${v}">${v}</option>`).join('');
         }
 
         function submitOrder() {
