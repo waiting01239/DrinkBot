@@ -29,7 +29,7 @@
             <select id="itemSelect" onchange="updateOptions()"></select>
         </div>
         <div class="section">
-            <label>2. 尺寸 (大杯優先)</label>
+            <label>2. 尺寸</label>
             <div class="segmented-control" id="sizeGroup"></div>
         </div>
         <div class="section" style="display: flex; gap: 10px;">
@@ -39,7 +39,7 @@
         <div class="section"><label>5. 加料</label><select id="toppingSelect"></select></div>
         <div class="section">
             <label>6. 特調 / 備註</label>
-            <textarea id="noteInput" placeholder="加珍珠、去冰，或自定義品項名稱..."></textarea>
+            <textarea id="noteInput" placeholder="加特殊料，或自訂義品項名稱..."></textarea>
         </div>
         <div class="section">
             <label>7. 誰要喝？</label>
@@ -55,7 +55,7 @@
     <script>
         let menuData = [], selectedSize = "", selectedType = "自己點";
         const liffId = "2008930067-ncNoJlEK";
-        const backendBase = "你的NGROK網址"; 
+        const backendBase = "https://deana-postexilian-trena.ngrok-free.dev/"; // 記得替換成你的網址
 
         liff.init({ liffId }).then(() => {
             const store = new URLSearchParams(window.location.search).get('store');
@@ -65,7 +65,9 @@
         async function loadMenu(store) {
             document.getElementById('storeTitle').innerText = store;
             try {
-                const res = await fetch(`${backendBase}/get_menu?store=${encodeURIComponent(store)}`, { headers: {"ngrok-skip-browser-warning":"true"} });
+                const res = await fetch(`${backendBase}/get_menu?store=${encodeURIComponent(store)}`, { 
+                    headers: {"ngrok-skip-browser-warning":"true"} 
+                });
                 const data = await res.json();
                 menuData = data.menu;
 
@@ -108,7 +110,7 @@
             const sizeGroup = document.getElementById('sizeGroup');
             let pricePairs = (selected.price || "0").toString().split(',').filter(p => p.trim() !== "");
             
-            // 關鍵對調：讓大杯在左
+            // 讓大杯在左
             if (pricePairs.length > 1) pricePairs.reverse();
 
             sizeGroup.innerHTML = pricePairs.map((p, idx) => {
