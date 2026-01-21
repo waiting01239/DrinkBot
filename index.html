@@ -55,7 +55,7 @@
     <script>
         let menuData = [], selectedSize = "", selectedType = "自己點";
         const liffId = "2008930067-ncNoJlEK";
-        const backendBase = "https://deana-postexilian-trena.ngrok-free.dev"; // <--- 記得填寫你的後端網址
+        const backendBase = "https://deana-postexilian-trena.ngrok-free.dev"; 
 
         liff.init({ liffId }).then(() => {
             const store = new URLSearchParams(window.location.search).get('store');
@@ -101,22 +101,14 @@
         function updateOptions() {
             const itemVal = document.getElementById('itemSelect').value;
             let selected = menuData.find(i => i.name === itemVal);
-
-            // --- 關鍵修正：若選擇自定義品項，給予預設尺寸清單 ---
             if (itemVal === "自定義品項") {
-                selected = {
-                    price: "中:0,大:0",
-                    ice: "正常冰,少冰,微冰,去冰,完全去冰,溫,熱",
-                    sugar: "無糖,1分糖,3分糖,半糖,7分糖,9分糖,全糖",
-                    toppings: ""
-                };
+                selected = { price: "中:0,大:0", ice: "正常,少冰,微冰,去冰,熱", sugar: "正常,半糖,微糖,無糖", toppings: "" };
             }
-            
             if (!selected) return;
 
             const sizeGroup = document.getElementById('sizeGroup');
             let pricePairs = (selected.price || "0").toString().split(',').filter(p => p.trim() !== "");
-
+            if (pricePairs.length > 1) pricePairs.reverse();
             sizeGroup.innerHTML = pricePairs.map((p, idx) => {
                 const [label, price] = p.includes(':') ? p.split(':') : ['大', p];
                 if(idx === 0) selectedSize = label;
@@ -129,47 +121,36 @@
             document.getElementById('toppingSelect').innerHTML = '<option value="無">無</option>' + toppings.map(v => `<option value="${v}">${v}</option>`).join('');
         }
 
-		async function submitOrder() {
-			// 1. 取得網頁上的欄位值
-			const store = document.getElementById('storeTitle').innerText;
-			const item = document.getElementById('itemSelect').value;
-			const ice = document.getElementById('iceSelect').value;
-			const sugar = document.getElementById('sugarSelect').value;
-			const topping = document.getElementById('toppingSelect').value;
-			const note = document.getElementById('noteInput').value.trim() || "無";
-			
-			document.getElementById('status').innerText = "⏳ 訂單傳送中...";
+        async function submitOrder() {
+            const store = document.getElementById('storeTitle').innerText;
+            const item = document.getElementById('itemSelect').value;
+            const ice = document.getElementById('iceSelect').value;
+            const sugar = document.getElementById('sugarSelect').value;
+            const topping = document.getElementById('toppingSelect').value;
+            const note = document.getElementById('noteInput').value.trim() || "無";
+            
+            document.getElementById('status').innerText = "⏳ 傳送中...";
+            try {
+                const profile = await liff.getProfile();
+                const context = liff.getContext();
+                // 優先使用群組 ID，沒有則使用個人 ID
+                const targetId = context.groupId || context.roomId || context.userId || profile.userId;
 
-			try {
-				// 2. 取得 LINE 使用者與環境資訊
-				const profile = await liff.getProfile();
-				const context = liff.getContext();
-				
-				// 重要：這就是群組 ID，機器人會根據這個 ID 把卡片傳回群組
-				const targetId = context.groupId || context.roomId || profile.userId;
-
-				// 3. 直接將資料發送給後端 API
-				const response = await fetch(`${backendBase}/submit_order_direct`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						store, item, size: selectedSize, ice, sugar, 
-						topping, type: selectedType, note,
-						userName: profile.displayName,
-						targetId: targetId
-					})
-				});
-
-				if (response.ok) {
-					liff.closeWindow(); // 成功後關閉視窗，此時機器人會主動在群組發卡片
-				} else {
-					alert("點餐失敗");
-				}
-			} catch (e) {
-				console.error(e);
-				alert("連線錯誤");
-			}
-		}
+                await fetch(`${backendBase}/submit_order_direct`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        store, item, size: selectedSize, ice, sugar, 
+                        topping, type: selectedType, note,
+                        userName: profile.displayName,
+                        targetId: targetId
+                    })
+                });
+                liff.closeWindow();
+            } catch (e) {
+                alert("點餐失敗，請確認網路連線");
+            }
+        }
     </script>
 </body>
 </html>
